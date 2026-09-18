@@ -313,6 +313,45 @@ Préparer quelques demandes dans chaque statut, par exemple « Imprimante du bur
 
 ## Installation et avancement
 
-Le dépôt applicatif n'est pas encore initialisé dans le cadre de ce document. Les prérequis exacts, variables d'environnement, migrations, commandes de lancement et de tests seront ajoutés une fois vérifiés. Aucun résultat de test ni déploiement n'est revendiqué à ce stade.
+Le backend Spring Boot possède une route `/api/health` et une connexion PostgreSQL. Les tables métier et leurs migrations restent à implémenter.
+
+Prérequis : Docker avec Docker Compose, un JDK 17 et Gradle 9.7.1 (version configurée dans le projet). Le fichier `gradle-wrapper.jar` n'est pas présent dans le dépôt : les commandes ci-dessous utilisent donc Gradle installé localement.
+
+Depuis la racine du dépôt, démarrer la base et attendre qu'elle soit prête :
+
+```bash
+docker compose up -d --wait postgres
+```
+
+Puis démarrer le backend :
+
+```bash
+cd backend
+gradle bootRun
+```
+
+PostgreSQL est accessible sur `localhost:5432`, avec la base `gestion_tickets`, l'utilisateur `gestion_tickets` et le mot de passe de développement `gestion_tickets_dev`. Ces identifiants servent uniquement au développement local. Pour les remplacer, exporter `POSTGRES_USER` et `POSTGRES_PASSWORD` dans le terminal utilisé pour Compose et Spring Boot avant la première initialisation. Spring Boot accepte aussi `SPRING_DATASOURCE_URL` pour une autre adresse de base. Un fichier `.env` lu par Compose n'est pas automatiquement lu par Spring Boot.
+
+Pour ouvrir une console SQL depuis la racine :
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Exécuter `SELECT current_database();` pour vérifier la base courante, puis `\q` pour quitter. La base est initialement vide : aucune table métier n'est encore créée.
+
+Pour lancer le test d'intégration, conserver PostgreSQL démarré puis exécuter depuis `backend/` :
+
+```bash
+gradle test --tests fr.armand.backend.BackendApplicationTests
+```
+
+Ce test charge Spring Boot et exécute une requête SQL pour vérifier qu'il communique réellement avec PostgreSQL.
+
+Pour arrêter la base, utiliser `docker compose down` depuis la racine. Le volume nommé conserve les données ; `docker compose down -v` les supprime. Les variables d'initialisation PostgreSQL ne changent pas les comptes d'un volume déjà initialisé.
+
+La connexion se compose de trois éléments : le **serveur PostgreSQL** stocke les données, le **pilote JDBC** permet à Java de lui parler, et **Spring Data JPA** permettra de manipuler les futures entités Java via des repositories. Spring Boot configure automatiquement un `DataSource` (un ensemble de connexions réutilisables) à partir des propriétés `spring.datasource`.
+
+`spring.jpa.hibernate.ddl-auto=none` empêche Hibernate de créer ou modifier les tables implicitement : les prochaines évolutions du schéma devront être décrites par des migrations. `spring.jpa.open-in-view=false` évite de garder une session JPA ouverte pendant toute la réponse HTTP ; les accès aux données devront être réalisés dans les services et leurs transactions.
 
 Pour présenter le projet, expliquer un parcours complet, une règle métier testée, la différence entre demandeur et technicien affecté, et la manière dont le serveur empêche un accès non autorisé. Décrire honnêtement les fonctionnalités réalisées et celles restant à développer.
