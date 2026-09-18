@@ -313,7 +313,7 @@ Préparer quelques demandes dans chaque statut, par exemple « Imprimante du bur
 
 ## Installation et avancement
 
-Le backend Spring Boot possède une route `/api/health` et une connexion PostgreSQL. Les tables métier et leurs migrations restent à implémenter.
+Le backend Spring Boot possède une route `/api/health`, une connexion PostgreSQL et une première entité `Category`. Hibernate crée la table `category` au démarrage ; les autres tables métier restent à implémenter.
 
 Prérequis : Docker avec Docker Compose, un JDK 17 et Gradle 9.7.1 (version configurée dans le projet). Le fichier `gradle-wrapper.jar` n'est pas présent dans le dépôt : les commandes ci-dessous utilisent donc Gradle installé localement.
 
@@ -338,7 +338,7 @@ Pour ouvrir une console SQL depuis la racine :
 docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
-Exécuter `SELECT current_database();` pour vérifier la base courante, puis `\q` pour quitter. La base est initialement vide : aucune table métier n'est encore créée.
+Exécuter `SELECT current_database();` pour vérifier la base courante. Après le démarrage de Spring Boot, `\d category` affiche la table créée par Hibernate. Utiliser `\q` pour quitter.
 
 Pour lancer le test d'intégration, conserver PostgreSQL démarré puis exécuter depuis `backend/` :
 
@@ -346,12 +346,14 @@ Pour lancer le test d'intégration, conserver PostgreSQL démarré puis exécute
 gradle test --tests fr.armand.backend.BackendApplicationTests
 ```
 
-Ce test charge Spring Boot et exécute une requête SQL pour vérifier qu'il communique réellement avec PostgreSQL.
+Les tests chargent Spring Boot, vérifient la connexion PostgreSQL, puis enregistrent et relisent une catégorie avec JPA. La catégorie de test est annulée à la fin du test grâce à une transaction.
 
 Pour arrêter la base, utiliser `docker compose down` depuis la racine. Le volume nommé conserve les données ; `docker compose down -v` les supprime. Les variables d'initialisation PostgreSQL ne changent pas les comptes d'un volume déjà initialisé.
 
 La connexion se compose de trois éléments : le **serveur PostgreSQL** stocke les données, le **pilote JDBC** permet à Java de lui parler, et **Spring Data JPA** permettra de manipuler les futures entités Java via des repositories. Spring Boot configure automatiquement un `DataSource` (un ensemble de connexions réutilisables) à partir des propriétés `spring.datasource`.
 
-`spring.jpa.hibernate.ddl-auto=none` empêche Hibernate de créer ou modifier les tables implicitement : les prochaines évolutions du schéma devront être décrites par des migrations. `spring.jpa.open-in-view=false` évite de garder une session JPA ouverte pendant toute la réponse HTTP ; les accès aux données devront être réalisés dans les services et leurs transactions.
+`spring.jpa.hibernate.ddl-auto=update` demande à Hibernate de créer les tables manquantes et d'adapter leur structure aux entités au démarrage, sans les recréer systématiquement. Ce choix simplifie l'apprentissage ; il ne gère pas toutes les évolutions, notamment les renommages, comme le ferait une migration explicite. `spring.jpa.open-in-view=false` évite de garder une session JPA ouverte pendant toute la réponse HTTP ; les accès aux données devront être réalisés dans les services et leurs transactions.
+
+Dans `Category.java`, `@Entity` indique qu'un objet Java correspond à une ligne en base. `@Table` donne le nom de la table, `@Id` désigne son identifiant et `@GeneratedValue` confie sa génération à PostgreSQL. `@Column` précise les contraintes : le nom est obligatoire, unique et limité à 80 caractères. Le champ `active` vaut `true` pour une nouvelle catégorie créée en Java. Aucune insertion manuelle ni route HTTP n'est nécessaire pour créer la table : démarrer Spring Boot suffit.
 
 Pour présenter le projet, expliquer un parcours complet, une règle métier testée, la différence entre demandeur et technicien affecté, et la manière dont le serveur empêche un accès non autorisé. Décrire honnêtement les fonctionnalités réalisées et celles restant à développer.
