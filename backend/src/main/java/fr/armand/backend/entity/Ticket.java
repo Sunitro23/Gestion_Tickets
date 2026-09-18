@@ -10,7 +10,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PreUpdate;
 
 @Entity
 @Table(name = "ticket")
@@ -108,9 +107,34 @@ public class Ticket {
         return resolvedAt;
     }
 
-    // JPA appelle cette méthode avant une modification de la ligne du ticket.
-    @PreUpdate
-    protected void updateTimestamp() {
+    // Les services vérifient les droits et les transitions avant ces modifications.
+    public void assignTo(AppUser technician) {
+        assignee = technician;
+        touch();
+    }
+
+    public void start() {
+        status = "EN_COURS";
+        touch();
+    }
+
+    public void resolve(String explanation) {
+        status = "RESOLUE";
+        resolution = explanation;
+        resolvedAt = Instant.now();
+        touch();
+    }
+
+    public void reopen() {
+        status = "OUVERTE";
+        assignee = null;
+        resolution = null;
+        resolvedAt = null;
+        touch();
+    }
+
+    public void touch() {
         updatedAt = Instant.now();
     }
+
 }

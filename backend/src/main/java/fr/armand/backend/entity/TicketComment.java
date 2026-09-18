@@ -46,6 +46,19 @@ public class TicketComment {
         this.content = content;
     }
 
+    public static TicketComment archivedResolution(Ticket ticket, AppUser author) {
+        TicketComment comment = new TicketComment(ticket, author,
+                "Résolution du " + ticket.getResolvedAt() + "\n" + ticket.getResolution());
+        comment.kind = "RESOLUTION_ARCHIVEE";
+        return comment;
+    }
+
+    public static TicketComment reopening(Ticket ticket, AppUser author, String reason) {
+        TicketComment comment = new TicketComment(ticket, author, reason);
+        comment.kind = "REOUVERTURE";
+        return comment;
+    }
+
     public Long getId() {
         return id;
     }
